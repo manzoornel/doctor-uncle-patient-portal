@@ -1,0 +1,25 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Nunito', 'Noto Sans Malayalam', sans-serif;
+  background: #FBF8F3;
+  font-size: 17px; /* larger base for readability (elderly-friendly) */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Larger touch targets everywhere */
+button, a {
+  min-height: 44px;
+}
+
+button {
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+}
