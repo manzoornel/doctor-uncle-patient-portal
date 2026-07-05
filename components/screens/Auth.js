@@ -13,8 +13,21 @@ export function LoginScreen({ c, onOtpSent }) {
     setLoading(true);
     setError("");
     try {
-      await api.getLoginOTP(mobile);
-      onOtpSent(mobile);
+      // Step 1: find the patient record for this mobile (live portal flow)
+      const lookup = await api.getPatientsByMobile(mobile);
+      const patients = lookup?.data || [];
+      if (!patients.length || !patients[0]?.patient_id) {
+        setError(
+          c.appName === "ഡോക്ടർ അങ്കിൾ"
+            ? "ഈ നമ്പറിൽ രോഗി രജിസ്റ്റർ ചെയ്തിട്ടില്ല. ക്ലിനിക്കിൽ ബന്ധപ്പെടുക."
+            : "No patient found with this number. Please contact the clinic."
+        );
+        setLoading(false);
+        return;
+      }
+      // Step 2: request OTP using the patient_id
+      await api.getLoginOTP(patients[0].patient_id);
+      onOtpSent(mobile, patients[0].patient_id);
     } catch (e) {
       setError(c.error);
     } finally {
@@ -82,10 +95,14 @@ export function OtpScreen({ c, mobile, onVerified }) {
     setError("");
     try {
       const res = await api.patientLogin(mobile, otp);
-      // ASSUMPTION: response includes a `token` field on success.
-      // Confirm exact field name with Grandis and adjust here if different.
-      if (!res?.token) throw new Error("no token");
-      onVerified(res.token);
+      // Live portal response: { code: 1, data: { token, patient_name, uhid, ... } }
+      const d = res?.data;
+      if (!d?.token) throw new Error("no token");
+      onVerified(d.token, {
+        name: d.patient_name || "",
+        uhid: d.uhid || "",
+        patient_id: d.patient_id || "",
+      });
     } catch (e) {
       setError(c.error);
     } finally {

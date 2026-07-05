@@ -59,9 +59,18 @@ export default function PatientApp() {
         api.fetchPatientVisits(tok),
         api.fetchAppointments(tok),
       ]);
-      // ASSUMPTION: both endpoints return arrays directly, or { data: [...] }.
-      setVisits(Array.isArray(visitsRes) ? visitsRes : visitsRes.data || []);
-      setAppointments(Array.isArray(apptRes) ? apptRes : apptRes.data || []);
+      // Live Grandis responses are wrapped: { code: 1, data: [...] }
+      const rawVisits = visitsRes?.data || (Array.isArray(visitsRes) ? visitsRes : []);
+      const rawAppts = apptRes?.data || (Array.isArray(apptRes) ? apptRes : []);
+      // Normalize field names so all screens can rely on .date / .doctor
+      setVisits(
+        rawVisits.map((v) => ({
+          ...v,
+          date: v.visit_date || v.date || "",
+          doctor: v.doctor_name || v.doctor || "",
+        }))
+      );
+      setAppointments(rawAppts);
     } catch (e) {
       setHomeError(String(e));
     } finally {
@@ -74,7 +83,7 @@ export default function PatientApp() {
     setDoctorsError("");
     try {
       const res = await api.listDoctors(tok);
-      setDoctors(Array.isArray(res) ? res : res.data || []);
+      setDoctors(res?.data || (Array.isArray(res) ? res : []));
     } catch (e) {
       setDoctorsError(String(e));
     } finally {
@@ -98,8 +107,28 @@ export default function PatientApp() {
         api.fetchLabReports(session.token, visitId),
         api.fetchPatientMedications(session.token, visitId),
       ]);
-      setLabs(Array.isArray(labsRes) ? labsRes : labsRes.data || []);
-      setMeds(Array.isArray(medsRes) ? medsRes : medsRes.data || []);
+      const rawLabs = labsRes?.data || (Array.isArray(labsRes) ? labsRes : []);
+      const rawMeds = medsRes?.data || (Array.isArray(medsRes) ? medsRes : []);
+      // Live lab response nests values under lab_reports.result per report
+      const flatLabs = rawLabs.flatMap((r) =>
+        r?.lab_reports?.result
+          ? r.lab_reports.result.map((x) => ({
+              name: x.detail_description,
+              value: x.actual_result,
+              unit: x.unitdesc,
+              flag:
+                x.min_value && x.max_value && !isNaN(parseFloat(x.actual_result))
+                  ? parseFloat(x.actual_result) > parseFloat(x.max_value)
+                    ? "high"
+                    : parseFloat(x.actual_result) < parseFloat(x.min_value)
+                    ? "low"
+                    : "normal"
+                  : "normal",
+            }))
+          : [r]
+      );
+      setLabs(flatLabs);
+      setMeds(rawMeds);
     } catch (e) {
       setVisitDetailError(String(e));
     } finally {
@@ -111,8 +140,8 @@ export default function PatientApp() {
     if (screen === "visit" && selectedVisit) loadVisitDetail(selectedVisit);
   }, [screen, selectedVisit]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleVerified(token) {
-    const s = { token, mobile: pendingMobile };
+  function handleVerified(token, patient = {}) {
+    const s = { token, mobile: pendingMobile, name: patient.name || "", uhid: patient.uhid || "" };
     setSession(s);
     window.localStorage.setItem(SESSION_KEY, JSON.stringify(s));
     setScreen("home");
@@ -163,7 +192,7 @@ export default function PatientApp() {
       )}
 
       {screen === "login" && (
-        <LoginScreen c={c} onOtpSent={(mobile) => { setPendingMobile(mobile); setScreen("otp"); }} />
+        <LoginScreen c={c} onOtpSent={(mobile, patientId) => { setPendingMobile(mobile); setScreen("otp"); }} />
       )}
       {screen === "otp" && (
         <OtpScreen c={c} mobile={pendingMobile} onVerified={handleVerified} />

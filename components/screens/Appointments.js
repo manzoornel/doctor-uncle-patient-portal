@@ -61,7 +61,7 @@ export function SlotsScreen({ c, session, doctor, bookingDate }) {
     try {
       const res = await api.getDoctorSlots(session.token, doctor.doctor_id || doctor.id, forDate);
       // ASSUMPTION: response is either an array of slot times, or { slots: [...] }
-      setSlots(Array.isArray(res) ? res : res.slots || []);
+      setSlots(res?.data || (Array.isArray(res) ? res : res.slots || []));
     } catch (e) {
       setError(c.error);
     } finally {
@@ -79,7 +79,7 @@ export function SlotsScreen({ c, session, doctor, bookingDate }) {
         doctor.doctor_id || doctor.id,
         date,
         sel.token_no || sel.token || 0,
-        sel.time || sel
+        sel.StartTime || sel.time || sel
       );
       setDone(true);
     } catch (e) {
@@ -138,8 +138,8 @@ export function SlotsScreen({ c, session, doctor, bookingDate }) {
       {!loading && (
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
         {(slots || []).map((s, i) => {
-          const label = s.time || s;
-          const active = sel && (sel.time || sel) === label;
+          const label = s.StartTime || s.time || s;
+          const active = sel && (sel.StartTime || sel.time || sel) === label;
           return (
             <button key={i} onClick={() => setSel(s)} style={{
               padding: "14px 0", borderRadius: 14, border: `1.5px solid ${active ? T.teal : T.border}`,

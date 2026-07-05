@@ -20,7 +20,9 @@ export function HomeScreen({ c, session, data, setScreen, setSelectedVisit }) {
 
   return (
     <div style={{ padding: "18px 20px 90px" }}>
-      <div style={{ fontSize: 14, color: "#7A8A8F" }}>{c.hi}</div>
+      <div style={{ fontSize: 14, color: "#7A8A8F" }}>
+        {c.hi}{session?.name ? `, ${session.name}` : ""} 👋
+      </div>
       <div style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 800, fontSize: 20, color: T.dark, marginBottom: 16 }}>
         {c.appName}
       </div>
